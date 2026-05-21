@@ -13,7 +13,10 @@ const { archivePdfToDrive, logLeadToSheets } = require('./googleIntegration');
 const { getDatabaseMode, getLeadById, getLeads, initializeDatabase, isDatabaseConfigured, saveLead } = require('./db');
 
 const app = express();
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
 const PORT = process.env.PORT || 5000;
+const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 
 // Middleware
 const initialConfig = getConfig();
@@ -28,10 +31,13 @@ app.use(cors({
       return callback(null, true);
     }
 
+    console.error(`Blocked CORS origin: ${origin}`);
     return callback(new Error('Origin is not allowed by CORS'));
   }
 }));
-app.use(express.json());
+app.use(express.json({
+  limit: '10mb'
+}));
 
 // Ensure directories exist
 const reportsDir = path.join(__dirname, 'reports');
@@ -166,7 +172,7 @@ async function runAutomationJob(jobId) {
     logger(`Step 6 (Bonus): Logging lead metrics to live Leads Tracker Sheet...`);
     
     // We log the direct Drive link (or local download route as fallback)
-    const reportLink = driveResult.webViewLink || `http://localhost:${PORT}/api/leads/${jobId}/pdf`;
+    const reportLink = driveResult.webViewLink || `${BASE_URL}/api/leads/${jobId}/pdf`;
     sheetsResult = await logLeadToSheets(leadInfo, auditReport, reportLink, 'COMPLETED', logger);
 
     // ==========================================
@@ -208,7 +214,7 @@ async function runAutomationJob(jobId) {
       leadInfo,
       scrapingSource: scrapingResult?.source || 'unknown',
       seoScore: auditReport?.digitalPresence?.seoScore || 0,
-      reportLink: `http://localhost:${PORT}/api/leads/${jobId}/pdf`,
+      reportLink: `${BASE_URL}/api/leads/${jobId}/pdf`,
       pdfPath: pdfFilename,
       auditData: auditReport || null,
       emailStatus: 'FAILED',
@@ -360,22 +366,76 @@ app.post('/api/config', (req, res) => {
     res.status(500).json({ error: 'Failed to save configuration updates.' });
   }
 });
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'SimplifIQ backend running successfully',
+    databaseMode: getDatabaseMode(),
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Health endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    database: getDatabaseMode(),
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Global error handlers
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION:', err);
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error('UNHANDLED REJECTION:', err);
+});
 
 // Start Express Listener
 async function startServer() {
-  if (isDatabaseConfigured()) {
-    await initializeDatabase();
-  }
 
-  app.listen(PORT, () => {
-    console.log(`========================================`);
-    console.log(`SimplifIQ Leads Automation Server Active`);
-    console.log(`Local Port: ${PORT}`);
-    console.log(`Database Mode: ${getDatabaseMode()}`);
-    console.log(`CORS Origins: ${allowedOrigins.length ? allowedOrigins.join(', ') : 'development wildcard'}`);
-    console.log(`Sandbox Logs: active`);
-    console.log(`========================================`);
-  });
+  try {
+
+    // Initialize Neon Database
+    if (isDatabaseConfigured()) {
+
+      console.log('Initializing PostgreSQL database...');
+
+      await initializeDatabase();
+
+      console.log('Database initialized successfully.');
+
+    } else {
+
+      console.log('Running in local JSON fallback mode.');
+
+    }
+
+    // Start Railway-compatible server
+    app.listen(PORT, '0.0.0.0', () => {
+
+      console.log('========================================');
+      console.log('SimplifIQ Leads Automation Server Active');
+      console.log(`Local Port: ${PORT}`);
+      console.log(`Database Mode: ${getDatabaseMode()}`);
+      console.log(`CORS Origins: ${allowedOrigins.length ? allowedOrigins.join(', ') : 'development wildcard'}`);
+      console.log('Sandbox Logs: active');
+      console.log('========================================');
+
+    });
+
+  } catch (error) {
+
+    console.error('SERVER STARTUP FAILED');
+    console.error(error);
+
+    process.exit(1);
+
+  }
 }
 
 startServer();
