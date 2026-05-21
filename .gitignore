@@ -1,0 +1,18 @@
+node_modules/
+dist/
+
+# Local configuration and secrets
+.env
+.env.*
+backend/config.json
+backend/leads.json
+
+# Generated runtime files
+backend/reports/
+backend/simulated_emails.log
+backend/simulated_google_api.log
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
