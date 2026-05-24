@@ -1,6 +1,23 @@
 # SimplifIQ - AI Lead Intake & Enrichment Engine (Prototype)
 
 An elite, fully-automated lead capture, enrichment, and personalized audit platform built for professional services, SaaS, and B2B businesses. When a prospect submits their company name and website, this system automatically scrapes their presence, processes insights using advanced AI (Gemini or OpenAI), renders a gorgeous multi-page PDF audit roadmap, dispatches a personalized email to their inbox, and records the lead details in a centralized leads spreadsheet and database without any human intervention.
+## Open for Contributing
+
+Contributions are welcome! 🚀
+
+If you find bugs, errors, security issues, or have ideas to improve SimplifiQ, feel free to fork the repository, make changes, and submit a pull request.
+
+Ways to contribute:
+
+* Fix bugs and errors
+* Improve UI/UX
+* Optimize backend performance
+* Enhance AI workflows
+* Add new features
+* Improve documentation
+
+Please ensure your code is clean, tested, and properly documented before submitting contributions.
+
 
 ---
 
